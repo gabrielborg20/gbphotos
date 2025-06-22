@@ -1,1 +1,1 @@
-Code for the GB Photography official website to be published on Github Pages
+Code for the GB Photography official website, published on Github Pages.
