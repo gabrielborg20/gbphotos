@@ -181,7 +181,7 @@
                         <p>formal, informal, nature, social media</p>
                       </div>
                     </div>
-                    <img src="images/Landscapes/henz 2.jpg" class="lazyload  img-fluid" alt="Images" />
+                    <img src="images/Landscapes/henz 2-2.jpg" class="lazyload  img-fluid" alt="Images" />
                   </a>
               </div>
 
@@ -390,7 +390,7 @@
                 </blockquote>
               </div>
               <div class="testimonial-author-info">
-                <img src="images/luke.jpeg" alt="Image">
+                <img src="images/luke.jpg" alt="Image">
                 <h3>Luke Deguara</h3>
               </div>
             </div>
@@ -460,8 +460,8 @@
 
           <div class="row justify-content-between">
             
-            <!-- <div class="col-md-6">
-              <form method="post" class="form-outline-style-v1" id="contactForm">
+            <div class="col-md-6">
+              <form id="contactus" action="https://formspree.io/f/meokrrwq" method="POST" class="form-outline-style-v1">
                 <div class="form-group row mb-0">
                   <div class="col-lg-6 form-group gsap-reveal">
                     <label for="name">Name</label>
@@ -487,7 +487,7 @@
               <div id="form-message-success">
                 Your message was sent, thank you!
               </div>
-            </div> -->
+            </div>
 
             <div class="col-md-4">
               <div class="contact-info-v1">
@@ -544,5 +544,13 @@
     <script src="js/scripts-dist.js"></script>
     <script src="js/main.js"></script>
 
+
+    <!-- Reset the form before Formspree redirects back to website -->
+    <script>
+      window.addEventListener('load', function() {
+        const form = document.getElementById('contactus');
+        if (form) form.reset();
+      });
+    </script>
   </body>
 </html>

@@ -573,7 +573,10 @@ var contactForm = function() {
 	               		$('#contactForm').fadeOut();
 	               	}, 1000);
 			            setTimeout(function(){
-			               $('#form-message-success').fadeIn();   
+			               $('#form-message-success').fadeIn();
+
+						   // Reset Form values.
+						   $('#contactForm')[0].reset();  
 	               	}, 1400);
 		               
 		            } else {
