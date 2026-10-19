@@ -678,3 +678,15 @@ var animateReveal = function() {
 	}
 
 }
+// Block right-click "Save image as" and dragging on images (incl. ones added later by the lightbox)
+;(function() {
+	var isImage = function(el) {
+		return el && (el.tagName === 'IMG' || (el.closest && el.closest('.fancybox-content')));
+	};
+	document.addEventListener('contextmenu', function(e) {
+		if (isImage(e.target)) e.preventDefault();
+	});
+	document.addEventListener('dragstart', function(e) {
+		if (isImage(e.target)) e.preventDefault();
+	});
+})();

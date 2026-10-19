@@ -2226,3 +2226,13 @@ span.error {
 .fancybox-is-grabbing .fancybox-content {
   cursor: default;
 }
+
+/* stop images from being dragged off the page, selected, or long-press saved on mobile */
+img,
+.fancybox-image {
+  -webkit-user-drag: none;
+  user-drag: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
