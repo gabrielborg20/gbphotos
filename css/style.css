@@ -2218,3 +2218,11 @@ span.error {
   .social li::after { transform: translateX(-50%) translateY(0); opacity: 1; visibility: visible; }
   .social a::after { top: 0; }
 }
+
+/* remove the grab / grabbing hand cursor from carousels and the lightbox */
+.owl-carousel.owl-grab,
+.fancybox-can-pan .fancybox-content,
+.fancybox-can-swipe .fancybox-content,
+.fancybox-is-grabbing .fancybox-content {
+  cursor: default;
+}
