@@ -678,10 +678,11 @@ var animateReveal = function() {
 	}
 
 }
-// Block right-click "Save image as" and dragging on images (incl. ones added later by the lightbox)
+// Block right-click saving and dragging on images and gallery links (incl. ones added later by the lightbox)
 ;(function() {
 	var isImage = function(el) {
-		return el && (el.tagName === 'IMG' || (el.closest && el.closest('.fancybox-content')));
+		if (!el || el.nodeType !== 1) el = el && el.parentElement;
+		return !!el && (el.tagName === 'IMG' || !!el.closest('a[data-fancybox], .fancybox-container'));
 	};
 	document.addEventListener('contextmenu', function(e) {
 		if (isImage(e.target)) e.preventDefault();

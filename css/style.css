@@ -2229,7 +2229,9 @@ span.error {
 
 /* stop images from being dragged off the page, selected, or long-press saved on mobile */
 img,
-.fancybox-image {
+.fancybox-image,
+a[data-fancybox],
+a[data-fancybox] * {
   -webkit-user-drag: none;
   user-drag: none;
   -webkit-user-select: none;
