@@ -909,3 +909,70 @@ var animateReveal = function() {
 	window.addEventListener('load', sync);
 	window.addEventListener('resize', sync);
 })();
+
+// Cookie banner: fades in on the first visit only (until a choice is saved); "Cookie Settings" in the footer reopens it.
+// The consent defaults and the Analytics loader live in each page's <head>.
+;(function() {
+	var KEY = 'gb-cookie-consent';
+	var read = function() { try { return localStorage.getItem(KEY); } catch (e) { return null; } };
+	var save = function(v) { try { localStorage.setItem(KEY, v); } catch (e) {} };
+
+	var banner = document.createElement('div');
+	banner.className = 'cookie-banner';
+	banner.setAttribute('role', 'dialog');
+	banner.setAttribute('aria-live', 'polite');
+	banner.setAttribute('aria-labelledby', 'cookie-banner-title');
+	banner.innerHTML =
+		'<p class="cookie-banner__title" id="cookie-banner-title">Cookies</p>' +
+		'<p class="cookie-banner__text">We use Google Analytics to see how visitors use this site, and cookies to personalise ads. ' +
+		'Neither runs unless you allow it.</p>' +
+		'<p class="cookie-banner__status"></p>' +
+		'<div class="cookie-banner__actions">' +
+			'<button type="button" class="cookie-banner__btn cookie-banner__btn--accept">Accept</button>' +
+			'<button type="button" class="cookie-banner__btn cookie-banner__btn--decline">Decline</button>' +
+		'</div>';
+	document.body.appendChild(banner);
+	var status = banner.querySelector('.cookie-banner__status');
+
+	var show = function() {
+		var choice = read();
+		status.textContent = choice === 'granted' ? 'Currently: allowed.' : choice === 'denied' ? 'Currently: declined.' : '';
+		banner.offsetWidth; // commit the hidden state so the fade runs
+		banner.classList.add('is-visible');
+	};
+	var hide = function() { banner.classList.remove('is-visible'); };
+
+	var clearAnalyticsCookies = function() {
+		var host = location.hostname, domains = ['', host, '.' + host, '.' + host.replace(/^www\./, '')];
+		document.cookie.split(';').forEach(function(c) {
+			var name = c.split('=')[0].trim();
+			if (name === '_ga' || name.indexOf('_ga_') === 0 || name === '_gid' || name === '_gat') {
+				domains.forEach(function(d) {
+					document.cookie = name + '=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/' + (d ? '; domain=' + d : '');
+				});
+			}
+		});
+	};
+
+	banner.querySelector('.cookie-banner__btn--accept').addEventListener('click', function() {
+		save('granted');
+		if (window.gtag) gtag('consent', 'update', { analytics_storage: 'granted', ad_storage: 'granted', ad_user_data: 'granted', ad_personalization: 'granted' });
+		if (window.gbLoadAnalytics) window.gbLoadAnalytics();
+		hide();
+	});
+
+	banner.querySelector('.cookie-banner__btn--decline').addEventListener('click', function() {
+		save('denied');
+		if (window.gtag) gtag('consent', 'update', { analytics_storage: 'denied', ad_storage: 'denied', ad_user_data: 'denied', ad_personalization: 'denied' });
+		clearAnalyticsCookies();
+		hide();
+	});
+
+	$(document).on('click', '.js-cookie-settings', function(e) {
+		e.preventDefault();
+		show();
+	});
+
+	// first visit: wait for the loader to clear before fading in
+	if (read() === null) setTimeout(show, 1400);
+})();

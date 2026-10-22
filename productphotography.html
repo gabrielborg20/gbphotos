@@ -2,16 +2,31 @@
 <html lang="en">
 
 <head>
-  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2740470021900174"
-     crossorigin="anonymous"></script>
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-J52X5W2PE8"></script>
+  <!-- Cookie consent: Google Analytics only loads after the visitor accepts (see the cookie banner in js/main.js) -->
   <script>
     window.dataLayer = window.dataLayer || [];
     function gtag(){dataLayer.push(arguments);}
-    gtag('js', new Date());
-
-    gtag('config', 'G-J52X5W2PE8');
+    (function () {
+      var choice = null;
+      try { choice = localStorage.getItem('gb-cookie-consent'); } catch (e) {}
+      var state = choice === 'granted' ? 'granted' : 'denied';
+      gtag('consent', 'default', { analytics_storage: state, ad_storage: state, ad_user_data: state, ad_personalization: state });
+      if (state !== 'granted') (window.adsbygoogle = window.adsbygoogle || []).requestNonPersonalizedAds = 1;
+      window.gbLoadAnalytics = function () {
+        if (window.gbAnalyticsLoaded) return;
+        window.gbAnalyticsLoaded = true;
+        var s = document.createElement('script');
+        s.async = true;
+        s.src = 'https://www.googletagmanager.com/gtag/js?id=G-J52X5W2PE8';
+        document.head.appendChild(s);
+        gtag('js', new Date());
+        gtag('config', 'G-J52X5W2PE8');
+      };
+      if (state === 'granted') window.gbLoadAnalytics();
+    })();
   </script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2740470021900174"
+     crossorigin="anonymous"></script>
   <title>GB Photography - Photography Services</title>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
@@ -35,7 +50,7 @@
   <link rel="stylesheet" href="css/vendor/jquery.fancybox.min.css">
 
   <!-- Theme Style -->
-  <link rel="stylesheet" href="css/style.css?v=11">
+  <link rel="stylesheet" href="css/style.css?v=12">
 
 </head>
 
@@ -493,6 +508,7 @@
                 <!-- Link back to Colorlib can't be removed. Template is licensed under CC BY 3.0. -->
               
               </p>
+            <p class="cookie-settings"><button type="button" class="js-cookie-settings">Cookie Settings</button></p>
 
           </div>
         </div>
@@ -508,7 +524,7 @@
   </div>
 
   <script src="js/scripts-dist.js"></script>
-  <script src="js/main.js?v=11"></script>
+  <script src="js/main.js?v=12"></script>
 
 </body>
 
