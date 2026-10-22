@@ -110,6 +110,10 @@ var siteIstotope = function() {
 }
 
 var loader = function() {
+	// hero title reveal (CSS, see .hero-reveal): start as the loader fades so the red sweep is seen from its first frame
+	setTimeout(function() {
+		document.documentElement.classList.add('hero-play');
+	}, 350);
 	setTimeout(function() {
 		TweenMax.to('.site-loader-wrap', 1, { marginTop: 50, autoAlpha: 0, ease: Power4.easeInOut });
   }, 10);
@@ -158,17 +162,6 @@ var siteMenuClone = function() {
     e.preventDefault();  
     
   });
-
-	$(window).resize(function() {
-		var $this = $(this),
-			w = $this.width();
-
-		if ( w > 768 ) {
-			if ( $('body').hasClass('offcanvas') ) {
-				$('body').removeClass('offcanvas');
-			}
-		}
-	});
 
 	$('.js-burger-toggle-menu').click(function(e){
 		e.preventDefault();
@@ -372,64 +365,201 @@ var counter = function() {
 
 
 var mobileToggleClick = function() {
-	$('.js-menu-toggle').click(function(e) {
+	var $body = $('body');
+	var $toggle = $('.menu-aperture');
+	var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-		e.preventDefault();
+	// Line-art aperture: six blade edges run from the corners of a hexagonal opening out to the ring.
+	// Opening the menu spins it half a turn while the opening tightens; closing plays it back.
+	var R = 21, R_OPEN = 10, R_SHUT = 4.5, SPIN = 180, DURATION = 650;
+	var state = 0, anim = null;
 
-  	if ( $('body').hasClass('offcanvas') ) {
-  		$('body').removeClass('offcanvas');
-  		$('.js-menu-toggle').removeClass('active');
-  		if ( $('.js-burger-toggle-menu').length ) {
-  			$('.js-burger-toggle-menu').removeClass('open');
-  		}
-  	} else {
-  		$('body').addClass('offcanvas');	
-  		$('.js-menu-toggle').addClass('active');
-  		if ( $('.js-burger-toggle-menu').length ) {
-  			$('.js-burger-toggle-menu').addClass('open');
-  		}
-  	}
+	$toggle.each(function() {
+		document.body.appendChild(this); // escape the page wrapper's stacking context so it can sit above the panel
+		var g = this.querySelector('.menu-aperture__blades');
+		for (var i = 0; i < 6; i++) g.appendChild(document.createElementNS('http://www.w3.org/2000/svg', 'line'));
+	});
 
-
-  });
-
-  // click outisde offcanvas
-	$(document).mouseup(function(e) {
-    var container = $(".unslate_co--site-mobile-menu");
-    if (!container.is(e.target) && container.has(e.target).length === 0) {
-      if ( $('body').hasClass('offcanvas') ) {
-				$('body').removeClass('offcanvas');
-				$('body').find('.js-menu-toggle').removeClass('active');
-
-				$('body').find('.js-burger-toggle-menu').removeClass('open');
+	var draw = function(p) {
+		var r = R_OPEN - (R_OPEN - R_SHUT) * p, rot = SPIN * p, verts = [], k;
+		for (k = 0; k < 6; k++) {
+			var a = (rot + k * 60) * Math.PI / 180;
+			verts.push([24 + r * Math.cos(a), 24 + r * Math.sin(a)]);
+		}
+		$toggle.each(function() {
+			var lines = this.querySelectorAll('.menu-aperture__blades line');
+			for (k = 0; k < 6; k++) {
+				var v = verts[k], n = verts[(k + 1) % 6];
+				var dx = n[0] - v[0], dy = n[1] - v[1], len = Math.sqrt(dx * dx + dy * dy);
+				dx /= len; dy /= len;
+				// extend the edge until it meets the ring
+				var px = v[0] - 24, py = v[1] - 24, b = px * dx + py * dy;
+				var t = -b + Math.sqrt(b * b - (px * px + py * py - R * R));
+				lines[k].setAttribute('x1', v[0]);
+				lines[k].setAttribute('y1', v[1]);
+				lines[k].setAttribute('x2', v[0] + dx * t);
+				lines[k].setAttribute('y2', v[1] + dy * t);
 			}
-    }
-	}); 
+		});
+	};
+
+	var animateTo = function(target) {
+		if (anim) cancelAnimationFrame(anim);
+		if (reduceMotion) { state = target; draw(state); return; }
+		var from = state, start = null;
+		var step = function(ts) {
+			if (start === null) start = ts;
+			var t = Math.min(1, (ts - start) / DURATION);
+			var e = 1 - Math.pow(1 - t, 4); // ease-out quart: fast start, soft landing
+			state = from + (target - from) * e;
+			draw(state);
+			anim = t < 1 ? requestAnimationFrame(step) : null;
+		};
+		anim = requestAnimationFrame(step);
+	};
+
+	var openMenu = function() {
+		$('.site-mobile-inner .site-nav-wrap > li').each(function(i) { this.style.setProperty('--i', i); });
+		// mark the collection page we're on
+		$('.site-mobile-inner .site-nav-wrap a').each(function() {
+			$(this).toggleClass('is-current', this.hostname === location.hostname && this.pathname === location.pathname && !this.hash);
+		});
+		$body.addClass('offcanvas');
+		$toggle.attr({ 'aria-expanded': 'true', 'aria-label': 'Close menu' });
+		animateTo(1);
+	};
+
+	var closeMenu = function() {
+		if (!$body.hasClass('offcanvas')) return;
+		$body.removeClass('offcanvas');
+		$toggle.attr({ 'aria-expanded': 'false', 'aria-label': 'Open menu' });
+		animateTo(0);
+	};
+
+	draw(0);
+	window.siteCloseMenu = closeMenu;
+
+	$body.on('click', '.js-menu-toggle', function(e) {
+		e.preventDefault();
+		if ($body.hasClass('offcanvas')) closeMenu(); else openMenu();
+	});
+
+	// click outside the panel (but not on the toggle, which handles itself)
+	$(document).on('mouseup', function(e) {
+		if (!$body.hasClass('offcanvas')) return;
+		if ($(e.target).closest('.unslate_co--site-mobile-menu, .js-menu-toggle').length) return;
+		closeMenu();
+	});
+
+	$(document).on('keydown', function(e) {
+		if (e.key === 'Escape') closeMenu();
+	});
+
+	// leaving desktop -> mobile and back shouldn't leave the panel stuck open
+	$(window).on('resize', function() {
+		if (window.innerWidth >= 992) closeMenu();
+	});
 };
 
 
 
-// navigation
+// navigation: every link to a section on this page scrolls smoothly, wherever the link lives
 var onePageNavigation = function() {
-  var navToggler = $('.site-menu-toggle');
- 	$("body").on("click", ".unslate_co--site-nav .site-nav-ul li a[href^='#'], .smoothscroll[href^='#'], .unslate_co--site-mobile-menu .site-nav-wrap li a[href^='#']", function(e) {
-    
-    e.preventDefault();
+	var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-    var $body = $('body');
-    if ( $body.hasClass('offcanvas')  ) {
-    	$body.removeClass('offcanvas');
-    	$('body').find('.js-burger-toggle-menu').removeClass('open');
-    }
+	var sectionFor = function(hash) {
+		return hash && hash.length > 1 ? document.getElementById(decodeURIComponent(hash.slice(1))) : null;
+	};
 
-    var hash = this.hash;
-    
-      $('html, body').animate({
-        scrollTop: $(hash).offset().top
-      }, 1000, 'easeInOutExpo');
+	var scrollToSection = function(el, done) {
+		var top = $(el).offset().top;
+		if (reduceMotion) { window.scrollTo(0, top); if (done) done(); return; }
+		$('html, body').stop().animate({ scrollTop: top }, 1000, 'easeInOutExpo').promise().done(function() {
+			if (done) done();
+		});
+	};
 
-  });
+	// "/", "/index.html" and "index.html" are all the same page
+	var samePage = function(path) {
+		return path.replace(/^\//, '').replace(/(^|\/)index\.html$/, '$1');
+	};
 
+	$('body').on('click', 'a[href*="#"]', function(e) {
+		if (this.hostname !== location.hostname || $(this).is('[data-toggle], [data-fancybox], [target="_blank"]')) return;
+		if (e.ctrlKey || e.metaKey || e.shiftKey || e.which === 2) return; // let "open in new tab" through
+		var hash = this.hash;
+
+		// Section on another page (e.g. index.html#about-section from a collection page):
+		// fade to the loader's black first, then switch pages.
+		if (samePage(this.pathname) !== samePage(location.pathname)) {
+			if (!hash || hash.length < 2 || reduceMotion) return;
+			e.preventDefault();
+			if (window.siteCloseMenu) window.siteCloseMenu();
+			// Hand the section over via sessionStorage and load the page without the #hash, otherwise
+			// the browser jumps to the section on its own before the glide can start.
+			var href = this.href.split('#')[0];
+			try { sessionStorage.setItem('gb-scroll-to', hash.slice(1)); } catch (err) { href = this.href; }
+			var $fade = $('<div class="page-fade" aria-hidden="true"></div>').appendTo('body');
+			$fade[0].offsetWidth; // commit the starting opacity so the transition runs
+			$fade.addClass('is-active');
+			setTimeout(function() { window.location.href = href; }, 380);
+			return;
+		}
+
+		var el = sectionFor(hash);
+		if (!el) return;
+		e.preventDefault();
+		if (window.siteCloseMenu) window.siteCloseMenu();
+		scrollToSection(el, function() {
+			if (history.replaceState) history.replaceState(null, '', hash);
+		});
+	});
+
+	// Coming back with the browser's back button can restore the faded-out page from cache
+	window.addEventListener('pageshow', function(e) {
+		if (e.persisted) $('.page-fade').remove();
+	});
+
+	// Arriving from another page: the page opens at the top under the black loader, and the glide
+	// starts while the loader is still fading out, so the fade-in and the scroll blend into one move.
+	var pending = null;
+	try { pending = sessionStorage.getItem('gb-scroll-to'); sessionStorage.removeItem('gb-scroll-to'); } catch (err) {}
+	// a #hash in the address (e.g. a shared link) still works, though the browser may already have jumped
+	var arrivalHash = pending ? '#' + pending : location.hash;
+	var arrival = sectionFor(arrivalHash);
+	if (arrival && history.replaceState) {
+		if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+		history.replaceState(null, '', location.pathname + location.search);
+		window.scrollTo(0, 0);
+
+		if (reduceMotion) {
+			window.scrollTo(0, $(arrival).offset().top);
+			history.replaceState(null, '', location.pathname + location.search + arrivalHash);
+			return;
+		}
+
+		setTimeout(function() {
+			var startY = window.pageYOffset, startTime = null, cancelled = false;
+			var distance = Math.abs($(arrival).offset().top - startY);
+			var duration = Math.min(1800, Math.max(1100, 900 + distance * 0.2));
+			var ease = function(t) { return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; }; // ease-in-out cubic
+			var cancel = function() { cancelled = true; };
+			window.addEventListener('wheel', cancel, { passive: true, once: true });
+			window.addEventListener('touchstart', cancel, { passive: true, once: true });
+
+			var step = function(ts) {
+				if (cancelled) return;
+				if (startTime === null) startTime = ts;
+				var t = Math.min(1, (ts - startTime) / duration);
+				// re-read the target every frame: images above it may still be loading and shifting it
+				var target = $(arrival).offset().top;
+				window.scrollTo(0, startY + (target - startY) * ease(t));
+				if (t < 1) requestAnimationFrame(step);
+				else history.replaceState(null, '', location.pathname + location.search + arrivalHash);
+			};
+			requestAnimationFrame(step);
+		}, 250);
+	}
 };
 
 
@@ -639,44 +769,6 @@ var animateReveal = function() {
 		});
 	}
 
-	// gsap reveal hero
-	$('.gsap-reveal-hero').each(function() {
-		var html = $(this).html();
-		$(this).html('<span class="reveal-wrap"><span class="cover"></span><span class="reveal-content">'+html+'</span></span>');
-	});
-	var grevealhero = $('.gsap-reveal-hero');
-
-	if ( grevealhero.length ) {
-		var heroNum = 0;
-		grevealhero.each(function() {
-
-			var cover = $(this).find('.cover'),
-				revealContent = $(this).find('.reveal-content');
-
-			var tl2 = new TimelineMax();
-
-			setTimeout(function() {
-
-				tl2
-					.to(cover, 1, { marginLeft: '0', ease:Expo.easeInOut, onComplete() {
-						tl2.set(revealContent, { x: 0 });
-						tl2.to(cover, 1, { marginLeft: '102%', ease:Expo.easeInOut });
-					} } )
-			}, heroNum * 0 );
-
-			var scene = new ScrollMagic.Scene({
-				triggerElement: this,
-				duration: "0%",
-				reverse: false,
-				offset: "-300%",
-			})
-			.setTween(tl2)
-			.addTo(controller);
-
-			heroNum++;
-		});
-	}
-
 }
 // Block right-click saving and dragging on images and gallery links (incl. ones added later by the lightbox)
 ;(function() {
@@ -690,4 +782,130 @@ var animateReveal = function() {
 	document.addEventListener('dragstart', function(e) {
 		if (isImage(e.target)) e.preventDefault();
 	});
+})();
+
+// Aperture back-to-top button: the iris closes as the page scrolls, flips to an arrow on hover
+;(function() {
+	var SVG_NS = 'http://www.w3.org/2000/svg';
+	var BLADES = 6;
+	var R_OPEN = 40, R_CLOSED = 3;   // radius of the opening at the top / bottom of the page
+	var MAX_TWIST = 40;              // degrees the blades rotate while closing
+
+	var btn = document.createElement('button');
+	btn.type = 'button';
+	btn.className = 'aperture-top';
+	btn.setAttribute('aria-label', 'Back to top');
+	btn.innerHTML =
+		'<span class="aperture-top__inner">' +
+			'<span class="aperture-top__face aperture-top__face--front">' +
+				'<svg viewBox="-50 -50 100 100" aria-hidden="true">' +
+					'<defs>' +
+						'<clipPath id="aperture-top-clip"><circle r="44"/></clipPath>' +
+						'<radialGradient id="aperture-top-glass" cx="35%" cy="30%" r="75%">' +
+							'<stop offset="0" stop-color="#5a6b7d"/>' +
+							'<stop offset="1" stop-color="#0b0f14"/>' +
+						'</radialGradient>' +
+					'</defs>' +
+					'<circle r="44" fill="url(#aperture-top-glass)"/>' +
+					'<g class="aperture-top__blades" clip-path="url(#aperture-top-clip)"></g>' +
+					'<circle r="46" fill="none" stroke="#D63447" stroke-width="4"/>' +
+				'</svg>' +
+			'</span>' +
+			'<span class="aperture-top__face aperture-top__face--back">' +
+				'<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">' +
+					'<path d="M12 19V5M5 12l7-7 7 7"/>' +
+				'</svg>' +
+			'</span>' +
+		'</span>';
+	document.body.appendChild(btn);
+
+	var bladeGroup = btn.querySelector('.aperture-top__blades');
+	var polys = [];
+	for (var i = 0; i < BLADES; i++) {
+		var p = document.createElementNS(SVG_NS, 'polygon');
+		bladeGroup.appendChild(p);
+		polys.push(p);
+	}
+
+	// Each blade is a wedge anchored at one corner of the hexagonal opening,
+	// bounded by that corner's two edge lines, so together they cover everything outside the opening.
+	var drawIris = function(r, twistDeg) {
+		var L = 200, verts = [], k;
+		for (k = 0; k < BLADES; k++) {
+			var a = (twistDeg + k * 360 / BLADES) * Math.PI / 180;
+			verts.push([r * Math.cos(a), r * Math.sin(a)]);
+		}
+		var dir = function(from, to) {
+			var dx = to[0] - from[0], dy = to[1] - from[1], len = Math.sqrt(dx * dx + dy * dy) || 1;
+			return [dx / len, dy / len];
+		};
+		for (k = 0; k < BLADES; k++) {
+			var v = verts[k];
+			var dNext = dir(v, verts[(k + 1) % BLADES]);
+			var dPrev = dir(verts[(k + BLADES - 1) % BLADES], v);
+			polys[k].setAttribute('points', [
+				v[0] + ',' + v[1],
+				(v[0] + dNext[0] * L) + ',' + (v[1] + dNext[1] * L),
+				(v[0] + dPrev[0] * L) + ',' + (v[1] + dPrev[1] * L)
+			].join(' '));
+		}
+	};
+
+	// The button appears once the Services Portfolio section (or, on other pages, the content
+	// below the hero) starts rising into view; the iris is fully open at that point.
+	var REVEAL_AT = 0.60            // fraction of the viewport height the section's top must rise above
+	var revealY = function() {
+		var section = document.getElementById('portfolio-section');
+		var hero = document.querySelector('.cover-v1');
+		var edge = section ? section.getBoundingClientRect().top
+			: hero ? hero.getBoundingClientRect().bottom
+			: window.innerHeight;
+		return Math.max(0, edge + getScrollTop() - window.innerHeight * REVEAL_AT);
+	};
+
+	var getScrollTop = function() {
+		return window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0;
+	};
+
+	var ticking = false;
+	var update = function() {
+		ticking = false;
+		var max = Math.max(document.documentElement.scrollHeight, document.body.scrollHeight) - window.innerHeight;
+		var y = getScrollTop(), start = Math.min(revealY(), max);
+		btn.classList.toggle('is-visible', max > 0 && y > start);
+		var progress = max > start ? Math.min(1, Math.max(0, (y - start) / (max - start))) : 0;
+		drawIris(R_OPEN - (R_OPEN - R_CLOSED) * progress, MAX_TWIST * progress);
+	};
+	var requestUpdate = function() {
+		if (!ticking) {
+			ticking = true;
+			window.requestAnimationFrame(update);
+		}
+	};
+
+	window.addEventListener('scroll', requestUpdate, { passive: true });
+	document.body.addEventListener('scroll', requestUpdate, { passive: true });
+	window.addEventListener('resize', requestUpdate);
+	window.addEventListener('load', requestUpdate);
+	update();
+
+	btn.addEventListener('click', function() {
+		var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+		var opts = { top: 0, behavior: reduce ? 'auto' : 'smooth' };
+		window.scrollTo(opts);
+		if (document.body.scrollTop > 0) document.body.scrollTo(opts);
+	});
+})();
+
+// The footer is revealed from behind the page on desktop: leave exactly its height free at the bottom
+;(function() {
+	var inner = document.querySelector('.unslate_co--site-inner');
+	var footer = document.querySelector('.unslate_co--footer');
+	if (!inner || !footer) return;
+	var sync = function() {
+		inner.style.marginBottom = window.innerWidth >= 992 ? footer.offsetHeight + 'px' : '';
+	};
+	sync();
+	window.addEventListener('load', sync);
+	window.addEventListener('resize', sync);
 })();
